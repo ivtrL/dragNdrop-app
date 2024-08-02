@@ -19,9 +19,17 @@
     },
     "windows": [
       {
+        "fullscreen": false,
+        "decorations": false,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "label": "main",
         "title": "widget-app",
-        "width": 800,
-        "height": 600
+        "width": 300,
+        "height": 300,
+        "visible": false,
+        "transparent": true
       }
     ],
     "security": {
