@@ -58,7 +58,7 @@ export function MenuItem({
     <button
       ref={buttonRef}
       className={twMerge(
-        "flex group px-2.5 py-1.5 cursor-default items-center rounded-sm gap-2 hover:bg-slate-600/90 mt-2 w-full justify-between text-white text-sm",
+        "flex group px-2.5 py-1.5 cursor-default items-center rounded-sm gap-2 hover:bg-blue-600/90 mt-2 w-full justify-between text-white text-sm",
         className
       )}
       {...props}

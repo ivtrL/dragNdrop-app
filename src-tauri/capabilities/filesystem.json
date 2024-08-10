@@ -1,0 +1,7 @@
+{
+  "identifier": "fs-read-home",
+  "description": "Allow access file access to home directory",
+  "local": true,
+  "windows": ["main"],
+  "permissions": ["fs:read-all", "fs:write-all"]
+}

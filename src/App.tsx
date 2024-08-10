@@ -1,27 +1,105 @@
 import "./App.css";
-import { invoke } from "@tauri-apps/api";
+import { invoke } from "@tauri-apps/api/core";
+import { Event, listen } from "@tauri-apps/api/event";
 import { ArrowUpToLine, ClipboardCopy, FileInput, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
+import useMeasure from "react-use-measure";
 import { useDropzone } from "react-dropzone";
 import { Separator } from "./components/separator";
 import { ProgressBar } from "./components/progress-bar";
 import { MenuItem } from "./components/menu-item";
 
+type DroppedFile = {
+  path: string;
+  x: number;
+  y: number;
+  buffer: string;
+};
+
+type MouseDropOver = {
+  position: {
+    x: number;
+    y: number;
+  };
+};
+
 function App() {
   const [uploadQueue, setUploadQueue] = useState<File[]>([]);
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => handleStartUpload(acceptedFiles),
-    []
-  );
+  const [overDropZone, setOverDropZone] = useState<boolean>(false);
+  const [dropZoneRef, bounds] = useMeasure();
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
-    onDrop,
+    onDrop: handleStartUpload,
     multiple: true,
     noClick: true,
     noKeyboard: true,
   });
 
-  console.log(isDragActive);
+  function getFileName(path: string) {
+    const normalizedPath = path.replace(/\\/g, "/");
+
+    return normalizedPath.split("/").pop() || "";
+  }
+
+  async function handleDroppedFile(event: Event<DroppedFile>) {
+    const fileDropped = event.payload;
+    if (
+      !(
+        fileDropped.y >= bounds.top &&
+        fileDropped.y <= bounds.bottom &&
+        fileDropped.x >= bounds.left &&
+        fileDropped.x <= bounds.right
+      )
+    ) {
+      if (overDropZone) return setOverDropZone(false);
+      return;
+    }
+
+    const fileObject = new File(
+      [fileDropped.buffer],
+      getFileName(fileDropped.path)
+    );
+
+    setUploadQueue((prev) => [...prev, fileObject]);
+
+    return setOverDropZone(false);
+  }
+
+  function handleMouseDropOver(event: Event<MouseDropOver>) {
+    const mousePosition = event.payload.position;
+    if (
+      !(
+        mousePosition.y >= bounds.top &&
+        mousePosition.y <= bounds.bottom &&
+        mousePosition.x >= bounds.left &&
+        mousePosition.x <= bounds.right
+      )
+    ) {
+      if (overDropZone) return setOverDropZone(false);
+      return;
+    }
+
+    return setOverDropZone(true);
+  }
+
+  useEffect(() => {
+    const unlisten = listen<DroppedFile>("drop-files", handleDroppedFile);
+
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, [dropZoneRef]);
+
+  useEffect(() => {
+    const unlisten = listen<MouseDropOver>(
+      "tauri://drag-over",
+      handleMouseDropOver
+    );
+
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, [overDropZone, dropZoneRef]);
 
   function handleStartUpload(files: File[]) {
     setUploadQueue(files);
@@ -36,13 +114,19 @@ function App() {
   }
 
   const status =
-    uploadQueue.length > 0 ? "accept" : isDragActive ? "active" : "pending";
+    uploadQueue.length > 0
+      ? "accept"
+      : isDragActive || overDropZone
+      ? "active"
+      : "pending";
 
   return (
     <div className="space-y-1">
       <div
+        data-status={status}
         {...getRootProps()}
-        className="text-white/80 m-4 px-4 h-24 flex items-center border border-dashed rounded justify-center"
+        ref={dropZoneRef}
+        className="text-white/80 m-4 px-4 h-24 flex items-center border border-dashed rounded justify-center transition-all data-[status=active]:animate-pulse"
       >
         <input {...getInputProps()} />
 
@@ -67,7 +151,7 @@ function App() {
               <button
                 onClick={handleCancelUpload}
                 title="Cancel upload"
-                className="text-red-300"
+                className="text-red-900"
               >
                 <X className="w-4 h-4" />
               </button>
